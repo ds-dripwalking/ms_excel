@@ -1,6 +1,11 @@
 import structlog
 import logging
 
+from app.crypto import SensitiveFilter
+
+# Добавляем фильтр для маскирования чувствительных данных
+logging.getLogger().addFilter(SensitiveFilter())
+
 structlog.configure(
     processors=[
         structlog.stdlib.filter_by_level,
