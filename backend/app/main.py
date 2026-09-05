@@ -5,6 +5,7 @@ import sentry_sdk
 from app.config import settings
 from app.database import get_db, engine, Base
 from app.logging_config import logger
+from app.api.vendor import router as vendor_router
 
 # Initialize Sentry
 if settings.SENTRY_DSN:
@@ -17,6 +18,9 @@ if settings.SENTRY_DSN:
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Kombain API")
+
+# Include routers
+app.include_router(vendor_router)
 
 
 @app.get("/healthz")
