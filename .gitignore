@@ -1,38 +1,38 @@
 ```
 # Dependencies
-.venv/
-venv/
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-
-# Build and distribution artifacts
-build/
-dist/
-*.egg-info/
-
-# Environment variables
+.Python
+env/
+venv/
+.venv/
 .env
 .env.local
-*.env.*
+.env.*
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
 
 # Logs
 *.log
 
-# Coverage reports
-.coverage
-coverage/
-htmlcov/
-
-# IDE files
+# Editor files
 .vscode/
 .idea/
 *.swp
 *.swo
 *.tmp
 
-# OS generated files
-.DS_Store
-Thumbs.db
+# Coverage
+.coverage
+htmlcov/
+coverage/
+
+# Testing
+.pytest_cache/
+.mypy_cache/
 ```
