@@ -12,6 +12,15 @@ class Settings(BaseSettings):
     CELERY_BROKER_URL: str = "redis://redis:6379/0"
     CELERY_RESULT_BACKEND: str = "redis://redis:6379/0"
     SENTRY_DSN: str | None = None
+    DEBUG: bool = False
+    
+    # МойСклад Vendor API
+    MOYSKLAD_APP_ID: str | None = None
+    MOYSKLAD_VENDOR_SECRET: str | None = None
+    MOYSKLAD_APP_UID: str | None = None
+    
+    # JWT для сессионных токенов
+    JWT_SECRET_KEY: str | None = None
 
     @property
     def database_url(self) -> str:
