@@ -13,6 +13,10 @@ from app.models.moysklad_api import (
     ExportJob,
     JobEvent,
 )
+from app.models.cloud_storage import (
+    StorageType,
+    CloudCredential,
+)
 
 __all__ = [
     # Vendor API модели
@@ -27,4 +31,7 @@ __all__ = [
     "DictionaryCache",
     "ExportJob",
     "JobEvent",
+    # Cloud storage модели
+    "StorageType",
+    "CloudCredential",
 ]
