@@ -1,64 +1,15 @@
 ```
-# Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-.Python
-env/
-venv/
-.venv/
-.venv*/
-.ENV
-.ENV.*/
 .env
-.env.*/
-*.env
-*.env.*/
-.ENV.*
-.ENV.*/.*
+.env.local
 .env.*
-.env.*/.*
-
-# Testing
-.coverage
-coverage/
-htmlcov/
-.nyc_output/
-.pytest_cache/
-.hypothesis/
-
-# Distribution / packaging
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-
-# IDEs
 .vscode/
 .idea/
-*.swp
-*.swo
-
-# Logs
 *.log
-
-# OS generated files
+*.tmp
 .DS_Store
 Thumbs.db
-
-# Environment specific
-.env.local
 ```
