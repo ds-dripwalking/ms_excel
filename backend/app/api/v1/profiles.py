@@ -328,9 +328,9 @@ async def run_profile(
     await db.commit()
     await db.refresh(job)
     
-    # TODO: Отправить задачу в Celery
-    # from app.workers.tasks import run_export_job
-    # run_export_job.delay(job.id)
+    # Отправка задачи в Celery (3.1, 3.2)
+    from app.workers.tasks_export import run_export_task
+    run_export_task.delay(profile_id=profile.id, job_id=job.id, account_id=account.id)
     
     logger.info(f"Запущена выгрузка job_id={job.id}")
     
@@ -390,6 +390,10 @@ async def test_profile(
     db.add(job)
     await db.commit()
     await db.refresh(job)
+    
+    # Отправка тестовой задачи в Celery (E4, 3.7)
+    from app.workers.tasks_export import test_export_task
+    test_export_task.delay(profile_id=profile.id, account_id=account.id)
     
     logger.info(f"Тестовый запуск job_id={job.id}")
     

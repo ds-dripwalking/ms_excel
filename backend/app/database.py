@@ -1,6 +1,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from typing import Generator
 
 from app.config import settings
 
@@ -8,6 +9,16 @@ from app.config import settings
 engine = create_engine(settings.database_url)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
+
+
+def get_db_session() -> Generator:
+    """Генератор сессий для использования вне FastAPI (например, в Celery задачах)."""
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
 
 # Асинхронный движок для async сессий
 async_engine = create_async_engine(
