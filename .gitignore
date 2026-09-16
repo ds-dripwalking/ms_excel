@@ -1,63 +1,14 @@
-```gitignore
-# Python
-__pycache__/
+```
+# Compiled Python files
 *.pyc
-*.pyo
-*.pyd
-.Python
-env/
+__pycache__/
+
+# Dependencies
 venv/
 .venv/
-pip-log.txt
-pip-delete-this-directory.txt
-.tox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.log
-.DS_Store
-Thumbs.db
 
-# Local development settings
+# Environment files
 .env
 .env.local
-.env.dev
-.env.test
-.env.prod
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*.tmp
-
-# Build and distribution artifacts
-dist/
-build/
-*.egg-info/
-.eggs/
-.sass-cache/
-.wafpickle-*
-node_modules/
-target/
-.gradle/
-
-# Testing
-.pytest_cache/
-.mypy_cache/
-htmlcov/
-.coverage
-
-# OS generated files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
+.env.*
 ```

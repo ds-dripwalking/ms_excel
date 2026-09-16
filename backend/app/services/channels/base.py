@@ -3,6 +3,8 @@ from abc import ABC, abstractmethod
 from typing import Optional, BinaryIO, List, Dict, Any
 from dataclasses import dataclass
 from datetime import datetime
+import asyncio
+import time
 
 
 @dataclass
@@ -77,6 +79,14 @@ class BaseStorageAdapter(ABC):
     """
     
     provider_name: str = "base"
+    
+    # Настройки retry
+    MAX_RETRIES: int = 5
+    BASE_DELAY: float = 1.0  # секунды
+    MAX_DELAY: float = 60.0  # секунды
+    
+    # Streaming порог (100 МБ)
+    STREAMING_THRESHOLD: int = 100 * 1024 * 1024
     
     def __init__(self, credentials: Any):
         """
@@ -199,3 +209,80 @@ class BaseStorageAdapter(ABC):
             str: Ссылка для скачивания.
         """
         pass
+    
+    async def _retry_with_backoff(self, func, *args, **kwargs):
+        """
+        Выполнение функции с экспоненциальным backoff retry.
+        
+        Args:
+            func: Асинхронная функция для выполнения.
+            *args: Позиционные аргументы функции.
+            **kwargs: Именованные аргументы функции.
+            
+        Returns:
+            Результат выполнения функции.
+            
+        Raises:
+            Последнее исключение, если все retry исчерпаны.
+        """
+        last_exception = None
+        
+        for attempt in range(self.MAX_RETRIES + 1):
+            try:
+                return await func(*args, **kwargs)
+            except (AuthError, PermissionError, QuotaExceededError, NotFoundError):
+                # Эти ошибки не имеют смысла retry
+                raise
+            except Exception as e:
+                last_exception = e
+                
+                if attempt == self.MAX_RETRIES:
+                    raise
+                
+                # Экспоненциальная задержка с джиттером
+                delay = min(self.BASE_DELAY * (2 ** attempt), self.MAX_DELAY)
+                jitter = asyncio.get_event_loop().time() % 0.5
+                await asyncio.sleep(delay + jitter)
+        
+        if last_exception:
+            raise last_exception
+    
+    def _needs_streaming(self, file_size: int) -> bool:
+        """
+        Проверка необходимости streaming загрузки.
+        
+        Args:
+            file_size: Размер файла в байтах.
+            
+        Returns:
+            bool: True если файл больше порога streaming.
+        """
+        return file_size > self.STREAMING_THRESHOLD
+    
+    def _map_provider_error(self, status_code: int, error_body: str) -> StorageError:
+        """
+        Маппинг ошибок провайдера в человекочитаемые исключения.
+        
+        Args:
+            status_code: HTTP статус код.
+            error_body: Тело ответа с ошибкой.
+            
+        Returns:
+            StorageError: Соответствующее исключение.
+        """
+        error_map = {
+            401: AuthError("Неверные учетные данные или истекший токен"),
+            403: PermissionError("Нет прав доступа к ресурсу"),
+            404: NotFoundError("Ресурс не найден"),
+            409: StorageError("Конфликт ресурсов"),
+            413: StorageError("Файл слишком большой"),
+            429: StorageError("Превышен лимит запросов. Повторите позже."),
+            507: QuotaExceededError("Диск переполнен"),
+        }
+        
+        if status_code in error_map:
+            return error_map[status_code]
+        elif 500 <= status_code < 600:
+            return StorageError(f"Ошибка сервера провайдера ({status_code})")
+        else:
+            return StorageError(f"Ошибка провайдера ({status_code}): {error_body}")
