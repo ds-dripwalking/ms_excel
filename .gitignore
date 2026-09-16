@@ -1,24 +1,32 @@
-```
+```gitignore
 # Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-
-# Dependencies
+.Python
+env/
 venv/
 .venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.DS_Store
+Thumbs.db
+
+# Local development settings
 .env
 .env.local
-.env.*
-
-# Logs
-*.log
-
-# Coverage
-.coverage
-coverage/
-htmlcov/
+.env.dev
+.env.test
+.env.prod
 
 # IDE
 .vscode/
@@ -27,8 +35,29 @@ htmlcov/
 *.swo
 *.tmp
 
-# Build artifacts
+# Build and distribution artifacts
 dist/
 build/
+*.egg-info/
+.eggs/
+.sass-cache/
+.wafpickle-*
+node_modules/
 target/
+.gradle/
+
+# Testing
+.pytest_cache/
+.mypy_cache/
+htmlcov/
+.coverage
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 ```

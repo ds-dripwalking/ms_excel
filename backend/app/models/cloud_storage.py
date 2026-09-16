@@ -13,6 +13,8 @@ class StorageType(str, enum.Enum):
     MAILRU_CLOUD = "mailru_cloud"
     GOOGLE_DRIVE = "google_drive"
     S3_COMPATIBLE = "s3_compatible"  # VK Cloud, MTS Cloud, Yandex Object Storage
+    EMAIL = "email"  # Отправка по SMTP
+    FILE_LINK = "file_link"  # Файл + секретная ссылка
 
 
 class CloudCredential(Base):

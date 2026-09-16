@@ -53,11 +53,15 @@ def _register_default_adapters():
     from app.services.channels.mailru_cloud import MailRuCloudAdapter
     from app.services.channels.google_drive import GoogleDriveAdapter
     from app.services.channels.s3_compatible import S3CompatibleAdapter
+    from app.services.channels.email_adapter import EmailAdapter
+    from app.services.channels.file_link_adapter import FileLinkAdapter
     
     StorageAdapterFactory.register_adapter(StorageType.YANDEX_DISK, YandexDiskAdapter)
     StorageAdapterFactory.register_adapter(StorageType.MAILRU_CLOUD, MailRuCloudAdapter)
     StorageAdapterFactory.register_adapter(StorageType.GOOGLE_DRIVE, GoogleDriveAdapter)
     StorageAdapterFactory.register_adapter(StorageType.S3_COMPATIBLE, S3CompatibleAdapter)
+    StorageAdapterFactory.register_adapter(StorageType.EMAIL, EmailAdapter)
+    StorageAdapterFactory.register_adapter(StorageType.FILE_LINK, FileLinkAdapter)
 
 
 # Автоматическая регистрация при импорте
