@@ -52,7 +52,8 @@ class CloudCredential(Base):
     
     # Связи
     account = relationship("MoyskladAccount", back_populates="cloud_credentials")
-    export_profiles = relationship("ExportProfile", back_populates="cloud_credential")
+    # export_profiles закомментирован, т.к. модель ExportProfile ещё не создана
+    # export_profiles = relationship("ExportProfile", back_populates="cloud_credential")
 
     def __repr__(self):
         return f"<CloudCredential(id={self.id}, type={self.storage_type}, name={self.name})>"

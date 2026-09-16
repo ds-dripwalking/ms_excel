@@ -36,6 +36,8 @@ from app.models.vendor import (
     AccountStatus,
     TariffType,
 )
+from app.models.cloud_storage import CloudCredential
+
 Base.metadata.create_all(bind=engine)
 
 
@@ -60,11 +62,11 @@ def db_session():
 @pytest.fixture
 def client(db_session):
     """Создаёт тестовый клиент FastAPI."""
-    from app.api.vendor import router
+    from app.api.v1.vendor import router as vendor_router
     from fastapi import FastAPI
     
     app = FastAPI()
-    app.include_router(router)
+    app.include_router(vendor_router)
     
     # Переопределяем зависимость get_db
     def override_get_db():
@@ -77,7 +79,11 @@ def client(db_session):
     def override_get_secret():
         return TEST_SECRET_KEY
     
-    app.dependency_overrides[override_get_db] = override_get_db
+    from app.database import get_db
+    from app.api.v1.vendor import get_mysklad_secret_key
+    
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_mysklad_secret_key] = override_get_secret
     
     with TestClient(app) as test_client:
         yield test_client

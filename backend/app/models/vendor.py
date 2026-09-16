@@ -61,6 +61,7 @@ class MoyskladAccount(Base):
     # Связи
     tokens = relationship("MoyskladToken", back_populates="account", cascade="all, delete-orphan")
     profiles = relationship("IntegrationProfile", back_populates="account", cascade="all, delete-orphan")
+    cloud_credentials = relationship("CloudCredential", back_populates="account", cascade="all, delete-orphan")
     
     __table_args__ = (
         UniqueConstraint('account_id', 'app_id', name='uq_account_app'),
