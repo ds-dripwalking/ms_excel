@@ -65,17 +65,19 @@ async def list_profiles(
     result = await db.execute(query.order_by(IntegrationProfile.created_at.desc()))
     profiles = result.scalars().all()
     
+    import json
+    
     return [
         ProfileResponse(
             id=p.id,
             account_id=p.account_id,
             name=p.name,
-            module="orders" if p.settings and "module" in p.settings else "pricelist",
-            fields_config=None,
-            filters=None,
-            format_config=None,
-            channel_config=None,
-            schedule_config=None,
+            module=p.module,
+            fields_config=json.loads(p.fields_config) if p.fields_config else None,
+            filters=json.loads(p.filters) if p.filters else None,
+            format_config=json.loads(p.format_config) if p.format_config else None,
+            channel_config=json.loads(p.channel_config) if p.channel_config else None,
+            schedule_config=json.loads(p.schedule_config) if p.schedule_config else None,
             is_active=p.is_active,
             created_at=p.created_at,
             updated_at=p.updated_at,
@@ -107,21 +109,18 @@ async def create_profile(
                 detail="Достигнут лимит профилей для тарифа Lite (макс. 3)"
             )
     
-    # Сохраняем настройки как JSON
+    # Сохраняем конфигурации как JSON строки
     import json
-    settings = {
-        "module": profile_data.module,
-        "fields_config": profile_data.fields_config,
-        "filters": profile_data.filters,
-        "format_config": profile_data.format_config,
-        "channel_config": profile_data.channel_config,
-        "schedule_config": profile_data.schedule_config,
-    }
     
     profile = IntegrationProfile(
         account_id=account.id,
         name=profile_data.name,
-        settings=json.dumps(settings),
+        module=profile_data.module,
+        fields_config=json.dumps(profile_data.fields_config) if profile_data.fields_config else None,
+        filters=json.dumps(profile_data.filters) if profile_data.filters else None,
+        format_config=json.dumps(profile_data.format_config) if profile_data.format_config else None,
+        channel_config=json.dumps(profile_data.channel_config) if profile_data.channel_config else None,
+        schedule_config=json.dumps(profile_data.schedule_config) if profile_data.schedule_config else None,
         is_active=True,
     )
     
@@ -140,7 +139,7 @@ async def create_profile(
         id=profile.id,
         account_id=profile.account_id,
         name=profile.name,
-        module=profile_data.module,
+        module=profile.module,
         fields_config=profile_data.fields_config,
         filters=profile_data.filters,
         format_config=profile_data.format_config,
@@ -175,18 +174,17 @@ async def get_profile(
         )
     
     import json
-    settings = json.loads(profile.settings) if profile.settings else {}
     
     return ProfileResponse(
         id=profile.id,
         account_id=profile.account_id,
         name=profile.name,
-        module=settings.get("module", "orders"),
-        fields_config=settings.get("fields_config"),
-        filters=settings.get("filters"),
-        format_config=settings.get("format_config"),
-        channel_config=settings.get("channel_config"),
-        schedule_config=settings.get("schedule_config"),
+        module=profile.module,
+        fields_config=json.loads(profile.fields_config) if profile.fields_config else None,
+        filters=json.loads(profile.filters) if profile.filters else None,
+        format_config=json.loads(profile.format_config) if profile.format_config else None,
+        channel_config=json.loads(profile.channel_config) if profile.channel_config else None,
+        schedule_config=json.loads(profile.schedule_config) if profile.schedule_config else None,
         is_active=profile.is_active,
         created_at=profile.created_at,
         updated_at=profile.updated_at,
@@ -217,25 +215,24 @@ async def update_profile(
         )
     
     import json
-    settings = json.loads(profile.settings) if profile.settings else {}
     
     # Обновляем поля
     if profile_data.name is not None:
         profile.name = profile_data.name
+    if profile_data.module is not None:
+        profile.module = profile_data.module
     if profile_data.fields_config is not None:
-        settings["fields_config"] = profile_data.fields_config
+        profile.fields_config = json.dumps(profile_data.fields_config)
     if profile_data.filters is not None:
-        settings["filters"] = profile_data.filters
+        profile.filters = json.dumps(profile_data.filters)
     if profile_data.format_config is not None:
-        settings["format_config"] = profile_data.format_config
+        profile.format_config = json.dumps(profile_data.format_config)
     if profile_data.channel_config is not None:
-        settings["channel_config"] = profile_data.channel_config
+        profile.channel_config = json.dumps(profile_data.channel_config)
     if profile_data.schedule_config is not None:
-        settings["schedule_config"] = profile_data.schedule_config
+        profile.schedule_config = json.dumps(profile_data.schedule_config)
     if profile_data.is_active is not None:
         profile.is_active = profile_data.is_active
-    
-    profile.settings = json.dumps(settings)
     
     await db.commit()
     await db.refresh(profile)
@@ -244,12 +241,12 @@ async def update_profile(
         id=profile.id,
         account_id=profile.account_id,
         name=profile.name,
-        module=settings.get("module", "orders"),
-        fields_config=settings.get("fields_config"),
-        filters=settings.get("filters"),
-        format_config=settings.get("format_config"),
-        channel_config=settings.get("channel_config"),
-        schedule_config=settings.get("schedule_config"),
+        module=profile.module,
+        fields_config=json.loads(profile.fields_config) if profile.fields_config else None,
+        filters=json.loads(profile.filters) if profile.filters else None,
+        format_config=json.loads(profile.format_config) if profile.format_config else None,
+        channel_config=json.loads(profile.channel_config) if profile.channel_config else None,
+        schedule_config=json.loads(profile.schedule_config) if profile.schedule_config else None,
         is_active=profile.is_active,
         created_at=profile.created_at,
         updated_at=profile.updated_at,
@@ -331,9 +328,9 @@ async def run_profile(
     await db.commit()
     await db.refresh(job)
     
-    # TODO: Отправить задачу в Celery
-    # from app.workers.tasks import run_export_job
-    # run_export_job.delay(job.id)
+    # Отправка задачи в Celery (3.1, 3.2)
+    from app.workers.tasks_export import run_export_task
+    run_export_task.delay(profile_id=profile.id, job_id=job.id, account_id=account.id)
     
     logger.info(f"Запущена выгрузка job_id={job.id}")
     
@@ -393,6 +390,10 @@ async def test_profile(
     db.add(job)
     await db.commit()
     await db.refresh(job)
+    
+    # Отправка тестовой задачи в Celery (E4, 3.7)
+    from app.workers.tasks_export import test_export_task
+    test_export_task.delay(profile_id=profile.id, account_id=account.id)
     
     logger.info(f"Тестовый запуск job_id={job.id}")
     

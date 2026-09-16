@@ -26,8 +26,10 @@ engine = create_engine(
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
-# Импортируем модели и создаём таблицы
+# Импортируем Base ДО создания таблиц
 from app.database import Base
+
+# Импортируем ВСЕ модели явно для регистрации в metadata
 from app.models.vendor import (
     MoyskladAccount,
     MoyskladToken,
@@ -36,6 +38,10 @@ from app.models.vendor import (
     AccountStatus,
     TariffType,
 )
+from app.models.cloud_storage import CloudCredential, StorageType
+from app.models.moysklad_api import DictionaryCache, ExportJob, JobEvent
+
+# Создаём таблицы после импорта всех моделей
 Base.metadata.create_all(bind=engine)
 
 
@@ -50,7 +56,19 @@ TEST_SECRET_KEY = "test-secret-key-for-jwt-validation"
 @pytest.fixture
 def db_session():
     """Создаёт новую сессию БД для каждого теста."""
-    db = TestingSessionLocal()
+    # Создаём новую in-memory БД для каждого теста
+    # Важно: в SQLite URL должен содержать ?check_same_thread=false для многопоточности
+    test_engine = create_engine(
+        SQLALCHEMY_DATABASE_URL,
+        connect_args={"check_same_thread": False}
+    )
+    
+    # Создаём все таблицы в этом движке
+    Base.metadata.create_all(bind=test_engine)
+    
+    # Создаём сессию, привязанную к этому движку
+    TestSession = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
+    db = TestSession()
     try:
         yield db
     finally:
@@ -60,11 +78,18 @@ def db_session():
 @pytest.fixture
 def client(db_session):
     """Создаёт тестовый клиент FastAPI."""
-    from app.api.vendor import router
+    # Переопределяем engine в app.database ДО импорта router
+    # Это критично, потому что router использует get_db из app.database,
+    # который создаёт сессии через SessionLocal, привязанный к engine
+    from app import database
+    database.engine = db_session.bind
+    database.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=db_session.bind)
+    
+    from app.api.v1.vendor import router as vendor_router
     from fastapi import FastAPI
     
     app = FastAPI()
-    app.include_router(router)
+    app.include_router(vendor_router)
     
     # Переопределяем зависимость get_db
     def override_get_db():
@@ -77,7 +102,11 @@ def client(db_session):
     def override_get_secret():
         return TEST_SECRET_KEY
     
-    app.dependency_overrides[override_get_db] = override_get_db
+    from app.database import get_db
+    from app.api.v1.vendor import get_mysklad_secret_key
+    
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_mysklad_secret_key] = override_get_secret
     
     with TestClient(app) as test_client:
         yield test_client
@@ -284,7 +313,8 @@ class TestAccountService:
         
         assert deleted.status == AccountStatus.DELETED_PENDING
         assert deleted.deleted_at is not None
-        assert deleted.deleted_at > datetime.now(timezone.utc)
+        # Используем timezone-aware datetime для сравнения
+        assert deleted.deleted_at.replace(tzinfo=timezone.utc) > datetime.now(timezone.utc)
     
     def test_tariff_limits(self, db_session):
         """Проверка лимитов тарифов."""

@@ -1,10 +1,18 @@
 import structlog
 import logging
+import sys
 
 from app.crypto import SensitiveFilter
 
 # Добавляем фильтр для маскирования чувствительных данных
 logging.getLogger().addFilter(SensitiveFilter())
+
+# Настраиваем logging для совместимости со structlog
+logging.basicConfig(
+    format="%(message)s",
+    stream=sys.stdout,
+    level=logging.INFO,
+)
 
 structlog.configure(
     processors=[
@@ -16,7 +24,7 @@ structlog.configure(
     ],
     wrapper_class=structlog.make_filtering_bound_logger(logging.INFO),
     context_class=dict,
-    logger_factory=structlog.PrintLoggerFactory(),
+    logger_factory=structlog.stdlib.LoggerFactory(),
     cache_logger_on_first_use=True,
 )
 

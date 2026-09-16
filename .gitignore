@@ -1,1 +1,14 @@
-Nothing should be ignored based on the provided file changes, as they consist only of Python source files (.py) and __init__.py files, which are legitimate source code files that should be tracked in version control. There are no build artifacts, dependencies, temporary files, or other items that need to be ignored in this change set.
+```
+# Compiled Python files
+*.pyc
+__pycache__/
+
+# Dependencies
+venv/
+.venv/
+
+# Environment files
+.env
+.env.local
+.env.*
+```

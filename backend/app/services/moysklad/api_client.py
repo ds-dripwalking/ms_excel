@@ -2,7 +2,7 @@
 Клиент МойСклад JSON API 1.2.
 
 Базовый URL: https://api.moysklad.ru/api/remap/1.2
-Аутентификация: OAuth 2.0, Bearer token
+Аутентификация: OAuth 2.0 Bearer token ИЛИ JWT (для исходящих запросов приложения)
 """
 import asyncio
 import logging
@@ -11,9 +11,12 @@ from datetime import datetime, timedelta
 
 import httpx
 
+from app.services.jwt_outbound import outbound_jwt_service
+
 logger = logging.getLogger(__name__)
 
 BASE_URL = "https://api.moysklad.ru/api/remap/1.2"
+APPS_API_BASE_URL = "https://api.moysklad.ru/api/apps"
 
 # Rate limiting: ~100 запросов / 30 сек ≈ 3-5 rps
 DEFAULT_RATE_LIMIT = 4  # запросов в секунду
@@ -54,22 +57,46 @@ class MoyskladClient:
         rate_limit: float = DEFAULT_RATE_LIMIT,
         chunk_size: int = DEFAULT_CHUNK_SIZE,
         timeout: float = 30.0,
+        use_app_jwt: bool = False,
+        app_uid: Optional[str] = None,
     ):
         """
         Инициализация клиента.
         
-        :param access_token: OAuth access token (Bearer)
+        :param access_token: OAuth access token (Bearer) или secret key для JWT
         :param rate_limit: Макс. запросов в секунду
         :param chunk_size: Размер чанка для пагинации
         :param timeout: Таймаут запроса в секундах
+        :param use_app_jwt: Если True, использовать JWT аутентификацию приложения
+        :param app_uid: UID приложения для JWT (если не передан, берется из env)
         """
         self.access_token = access_token
         self.rate_limit = rate_limit
         self.chunk_size = chunk_size
         self.timeout = timeout
+        self.use_app_jwt = use_app_jwt
+        self.app_uid = app_uid
         
         self._last_request_time: Optional[datetime] = None
         self._request_count = 0
+    
+    def _get_auth_headers(self) -> Dict[str, str]:
+        """Возвращает заголовки аутентификации."""
+        if self.use_app_jwt:
+            # Генерируем JWT для исходящего запроса
+            token = outbound_jwt_service.generate_token(app_uid=self.app_uid)
+            return {
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+                "Accept-Encoding": "gzip",
+            }
+        else:
+            # OAuth Bearer token
+            return {
+                "Authorization": f"Bearer {self.access_token}",
+                "Content-Type": "application/json",
+                "Accept-Encoding": "gzip",
+            }
     
     async def _rate_limit_wait(self):
         """Ожидание для соблюдения rate limit."""
@@ -87,6 +114,7 @@ class MoyskladClient:
         endpoint: str,
         params: Optional[Dict[str, Any]] = None,
         json_data: Optional[Dict[str, Any]] = None,
+        use_apps_api: bool = False,
     ) -> Dict[str, Any]:
         """
         Выполнение HTTP запроса к API.
@@ -95,14 +123,13 @@ class MoyskladClient:
         :param endpoint: Эндпоинт относительно BASE_URL
         :param params: Query параметры
         :param json_data: JSON тело запроса
+        :param use_apps_api: Если True, использовать Apps API базовый URL
         :return: Ответ API
         :raises MoyskladAPIError: При ошибке API
         """
-        url = f"{BASE_URL}/{endpoint.lstrip('/')}"
-        headers = {
-            "Authorization": f"Bearer {self.access_token}",
-            "Content-Type": "application/json",
-        }
+        base_url = APPS_API_BASE_URL if use_apps_api else BASE_URL
+        url = f"{base_url}/{endpoint.lstrip('/')}"
+        headers = self._get_auth_headers()
         
         await self._rate_limit_wait()
         
@@ -442,3 +469,35 @@ class MoyskladClient:
         """
         response = await self.get(f"entity/customentity/{meta_id}")
         return response.get("rows", [])
+    
+    # ==================== APPS API (Vendor) ====================
+    
+    async def update_app_status(
+        self,
+        app_id: str,
+        account_id: str,
+        status: str,
+        comment: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Обновление статуса приложения через Apps API.
+        Спецификация: integration.md §7.4, пункт аудита A12
+        
+        :param app_id: UUID приложения
+        :param account_id: UUID аккаунта
+        :param status: Статус (Activated, Activating, SettingsRequired)
+        :param comment: Комментарий (опционально)
+        :return: Ответ API
+        """
+        endpoint = f"/vendor/1.0/apps/{app_id}/{account_id}/status"
+        json_data = {"status": status}
+        if comment:
+            json_data["comment"] = comment
+        
+        # Используем Apps API и JWT аутентификацию
+        return await self._request(
+            method="PUT",
+            endpoint=endpoint,
+            json_data=json_data,
+            use_apps_api=True,
+        )
