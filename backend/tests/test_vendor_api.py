@@ -26,8 +26,11 @@ engine = create_engine(
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
-# Импортируем модели и создаём таблицы
+# Импортируем ВСЕ модели перед созданием таблиц
+# Это гарантирует, что все таблицы будут зарегистрированы в metadata
 from app.database import Base
+import app.models  # noqa: F401 - импортируем для регистрации всех моделей
+
 from app.models.vendor import (
     MoyskladAccount,
     MoyskladToken,
@@ -38,6 +41,7 @@ from app.models.vendor import (
 )
 from app.models.cloud_storage import CloudCredential
 
+# Создаём таблицы после импорта всех моделей
 Base.metadata.create_all(bind=engine)
 
 
@@ -62,6 +66,13 @@ def db_session():
 @pytest.fixture
 def client(db_session):
     """Создаёт тестовый клиент FastAPI."""
+    # Переопределяем engine в app.database ДО импорта router
+    # Это критично, потому что router использует get_db из app.database,
+    # который создаёт сессии через SessionLocal, привязанный к engine
+    from app import database
+    database.engine = db_session.bind
+    database.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=db_session.bind)
+    
     from app.api.v1.vendor import router as vendor_router
     from fastapi import FastAPI
     
@@ -290,7 +301,8 @@ class TestAccountService:
         
         assert deleted.status == AccountStatus.DELETED_PENDING
         assert deleted.deleted_at is not None
-        assert deleted.deleted_at > datetime.now(timezone.utc)
+        # Используем timezone-aware datetime для сравнения
+        assert deleted.deleted_at.replace(tzinfo=timezone.utc) > datetime.now(timezone.utc)
     
     def test_tariff_limits(self, db_session):
         """Проверка лимитов тарифов."""
