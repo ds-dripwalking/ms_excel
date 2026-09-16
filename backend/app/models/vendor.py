@@ -101,8 +101,30 @@ class IntegrationProfile(Base):
     # Название профиля
     name = Column(String(255), nullable=False)
     
-    # Настройки профиля (JSON)
-    settings = Column(Text, nullable=True)  # JSON строка с настройками
+    # Модуль экспорта (orders, pricelist)
+    module = Column(String(50), nullable=False, default="orders")
+    
+    # Конфигурация полей (JSON)
+    # Структура: {"order_fields": [...], "position_fields": [...], "include_custom_fields": true}
+    fields_config = Column(Text, nullable=True)
+    
+    # Фильтры (JSON)
+    # Структура зависит от модуля:
+    # - orders: {organization, store, statuses, period, date_from, date_to, sum_min, sum_max}
+    # - pricelist: {warehouses, price_types, min_price, max_price, only_in_stock}
+    filters = Column(Text, nullable=True)
+    
+    # Конфигурация формата (JSON)
+    # Структура: {"format": "xlsx|csv|json|yml", "encoding": "utf-8-sig|cp1251", "delimiter": ";|,|tab", ...}
+    format_config = Column(Text, nullable=True)
+    
+    # Конфигурация канала доставки (JSON)
+    # Структура: {"channel_type": "yandex_disk|mailru_cloud|google_drive|email|file_link", "credential_id": "...", ...}
+    channel_config = Column(Text, nullable=True)
+    
+    # Конфигурация расписания (JSON)
+    # Структура: {"schedule_type": "manual|daily|hourly", "time": "HH:MM", "interval_hours": N}
+    schedule_config = Column(Text, nullable=True)
     
     # Активность профиля
     is_active = Column(Boolean, default=True, nullable=False)

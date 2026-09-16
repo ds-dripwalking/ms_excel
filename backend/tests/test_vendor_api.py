@@ -26,11 +26,10 @@ engine = create_engine(
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
-# Импортируем ВСЕ модели перед созданием таблиц
-# Это гарантирует, что все таблицы будут зарегистрированы в metadata
+# Импортируем Base ДО создания таблиц
 from app.database import Base
-import app.models  # noqa: F401 - импортируем для регистрации всех моделей
 
+# Импортируем ВСЕ модели явно для регистрации в metadata
 from app.models.vendor import (
     MoyskladAccount,
     MoyskladToken,
@@ -39,7 +38,8 @@ from app.models.vendor import (
     AccountStatus,
     TariffType,
 )
-from app.models.cloud_storage import CloudCredential
+from app.models.cloud_storage import CloudCredential, StorageType
+from app.models.moysklad_api import DictionaryCache, ExportJob, JobEvent
 
 # Создаём таблицы после импорта всех моделей
 Base.metadata.create_all(bind=engine)
@@ -56,7 +56,19 @@ TEST_SECRET_KEY = "test-secret-key-for-jwt-validation"
 @pytest.fixture
 def db_session():
     """Создаёт новую сессию БД для каждого теста."""
-    db = TestingSessionLocal()
+    # Создаём новую in-memory БД для каждого теста
+    # Важно: в SQLite URL должен содержать ?check_same_thread=false для многопоточности
+    test_engine = create_engine(
+        SQLALCHEMY_DATABASE_URL,
+        connect_args={"check_same_thread": False}
+    )
+    
+    # Создаём все таблицы в этом движке
+    Base.metadata.create_all(bind=test_engine)
+    
+    # Создаём сессию, привязанную к этому движку
+    TestSession = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
+    db = TestSession()
     try:
         yield db
     finally:
